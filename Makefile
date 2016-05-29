@@ -4,17 +4,13 @@ DGND3700v2_URL=http://www.downloads.netgear.com/files/GPL/$(DGND3700v2_ZIP)
 
 BUILDROOT=buildroot-4.4.2-1
 
-HOSTCC=gcc-4.9
-HOSTCXX=g++-4.9
-HOSTCPP=cpp-4.9
+all: .dgnd3700v2_source
 
-CFLAGS_FOR_BUILD='-g -O2 -std=c89'
+.deps_installed:
+	sudo aptitude install unzip bison flex build-essential libncurses5-dev gettext
+	touch $@
 
-TEMPDIR := $(shell mktemp -du)
-
-all: .toolchain_built
-
-.zip_fetched:
+.zip_fetched: .deps_installed
 	wget $(DGND3700v2_URL)
 	touch $@
 
@@ -26,31 +22,31 @@ all: .toolchain_built
 	tar xvfz uclibc-crosstools-gcc-4.4.2-1-with-ftw.tar.bz2
 	touch $@
 
-.toolchain_patched: .toolchain_extracted
-	sed -i '42s/$$/ \\/' $(BUILDROOT)/package/atk/atk.mk
+.toolchain_built: .toolchain_extracted
+	cd $(BUILDROOT) && sudo make 
 	touch $@
 
-.toolchain_configured: .toolchain_patched
-	mkdir $(TEMPDIR)
-	mv $(BUILDROOT)/.*config* $(TEMPDIR)
-	mv $(BUILDROOT)/output/dl $(TEMPDIR)
-	cd $(BUILDROOT) && sudo make distclean
-	mv $(TEMPDIR)/.*config* $(BUILDROOT)
-	mv $(TEMPDIR)/dl $(BUILDROOT)/output/
-	rmdir $(TEMPDIR)
+.dgnd3700v2_extracted: .zip_extracted
+	tar xvfj $(DGND3700v2)_src.tar.bz2
 	touch $@
 
-.toolchain_built: .toolchain_configured
-	cd $(BUILDROOT) && sudo make -j HOSTCC=$(HOSTCC) HOSTCXX=$(HOSTCXX) HOSTCPP=$(HOSTCPP) # CFLAGS_FOR_BUILD=$(CFLAGS_FOR_BUILD)
+.dgnd3700v2_kernel: .dgnd3700v2_extracted
+	cd $(DGND3700v2)_src_bak && sudo make kernel
+	touch $@
+
+.dgnd3700v2_source: .dgnd3700v2_kernel
+	cd $(DGND3700v2)_src_bak && sudo make source
 	touch $@
 
 clean:
-	rm -rf .toolchain_extracted .toolchain_patched .toolchain_built
-	sudo rm -rf $(BUILDROOT)
+	rm -rf .dgnd3700v2_extracted .dgnd3700v2_kernel .dgnd3700v2_source
+	sudo rm -rf $(DGND3700v2)_src_bak
 
 realclean: clean
 	rm -rf .zip_extracted
 	rm -rf $(DGND3700v2)_src.tar.bz2 uclibc-crosstools-gcc-4.4.2-1-with-ftw.tar.bz2 README.txt
+	rm -rf .toolchain_extracted .toolchain_built
+	sudo rm -rf $(BUILDROOT)
 
 distclean: realclean
 	rm -rf .zip_fetched
