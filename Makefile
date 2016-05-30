@@ -7,7 +7,7 @@ BUILDROOT=buildroot-4.4.2-1
 all: .dgnd3700v2_source
 
 .deps_installed:
-	sudo aptitude install unzip bison flex build-essential libncurses5-dev gettext zlib1g-dev
+	sudo aptitude install unzip bison flex build-essential libncurses5-dev gettext zlib1g-dev zip
 	touch $@
 
 .zip_fetched: .deps_installed
