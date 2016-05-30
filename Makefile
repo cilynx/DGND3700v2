@@ -24,6 +24,7 @@ all: .dgnd3700v2_source
 
 .toolchain_built: .toolchain_extracted
 	cd $(BUILDROOT) && sudo make 
+	sudo ln -s /opt/toolchains/uclibc-crosstools-gcc-4.4.2-1-with-ftw /opt/toolchains/uclibc-crosstools-gcc-4.4.2-1
 	touch $@
 
 .dgnd3700v2_extracted: .toolchain_built
@@ -32,7 +33,7 @@ all: .dgnd3700v2_source
 	sed -i '215s/$$/)/' $(DGND3700v2)_src_bak/Source/apps/flex-2.5.4/Makefile
 	touch $@
 
-.dgnd3700v2_kernel: .dgnd3700v2_extracted 
+.dgnd3700v2_kernel: .dgnd3700v2_extracted
 	cd $(DGND3700v2)_src_bak && sudo make kernel
 	touch $@
 
