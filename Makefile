@@ -31,6 +31,7 @@ all: .dgnd3700v2_source
 	tar xvfj $(DGND3700v2)_src.tar.bz2
 	sed -i 's/.\/\$$(FLEX)/flex/' $(DGND3700v2)_src_bak/Source/apps/flex-2.5.4/Makefile
 	sed -i '215s/$$/)/' $(DGND3700v2)_src_bak/Source/apps/flex-2.5.4/Makefile
+	sed -i 's/\/usr\/lib/..\/..\/..\/target\/lib/' $(DGND3700v2)_src_bak/Source/apps/ppp-2.4.1.pppoe4.orig/pppd/Makefile.linux
 	touch $@
 
 .dgnd3700v2_kernel: .dgnd3700v2_extracted
