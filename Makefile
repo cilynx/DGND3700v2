@@ -53,5 +53,5 @@ realclean: clean
 	sudo rm -rf $(BUILDROOT)
 
 distclean: realclean
-	rm -rf .zip_fetched
+	rm -rf .zip_fetched .deps_installed
 	rm -rf $(DGND3700v2_ZIP)
