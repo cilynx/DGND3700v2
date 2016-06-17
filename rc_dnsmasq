@@ -1,7 +1,12 @@
 #!/bin/sh
 
 nvram_get() {
-   nvram get $1 | cut -f2 -d=
+   r=`nvram get $1 | cut -f2 -d=`
+   if [ "$r" = "$1 do not exist!" ]; then
+      return 0
+   else
+      echo "$r"
+   fi
 }
 
 rc_log() {
