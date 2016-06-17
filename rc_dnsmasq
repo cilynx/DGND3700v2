@@ -1,0 +1,78 @@
+#!/bin/sh
+
+nvram_get() {
+   nvram get $1 | cut -f2 -d=
+}
+
+rc_log() {
+   if [ -e /usr/etc/log_rc_flag ]; then
+      echo "`date` [rc_dnsmasq] $@" >> /var/log/rc_calls
+   fi
+}
+
+rc_log_echo() {
+   rc_log "$@"
+   echo "$@"
+}
+
+args_from_nvram() {
+   # Static arguments
+   args="--log-facility=/var/log/dnsmasq.log --clear-on-reload --leasefile-ro --dhcp-script=/usr/sbin/lease_update.sh"
+
+   # DHCP Server
+   if [ "$(nvram_get dhcp_server_enable)" ]; then
+      if [ "$(nvram_get dhcp_start_ip)" ]; then
+	 if [ "$(nvram_get dhcp_end_ip)" ]; then
+	    args="$args --dhcp-range=$(nvram_get dhcp_start_ip),$(nvram_get dhcp_end_ip),$(nvram_get lan_netmask),12h"
+	 fi
+      fi
+   fi
+
+   # DNS Server
+   if [ "$(nvram_get wan_fix_dns)" ]; then
+      if [ "$(nvram_get wan_dns1)" ] || [ "$(nvram_get wan_dns2)" ]; then
+	 args="$args --no-resolv"
+	 if [ "$(nvram_get wan_dns1)" ]; then
+	    args="$args --server $(nvram_get wan_dns1)"
+	 fi
+	 if [ "$(nvram_get wan_dns2)" ]; then
+	    args="$args --server $(nvram_get wan_dns2)"
+	 fi
+      fi
+   fi
+
+   echo "$args"
+}
+
+case "$1" in
+   start)
+      if [ "$(pidof dnsmasq)" ]; then
+	 rc_log_echo "dnsmasq already running ($(pidof dnsmasq)).  Leaving it alone."
+      else
+	 /usr/sbin/dnsmasq $(args_from_nvram)
+	 if [ "$(pidof dnsmasq)" ]; then
+	    rc_log_echo "dnsmasq started ($(pidof dnsmasq)) successfully. ($(args_from_nvram))"
+	 else
+	    rc_log_echo "Error starting dnsmasq. ($(args_from_nvram))"
+	 fi
+      fi
+      ;;
+   stop)
+      if [ "$(pidof dnsmasq)" ]; then
+	 /usr/sbin/kill -9 $(pidof dnsmasq)
+	 rc_log_echo "dnsmasq stopped."
+      else
+	 rc_log_echo "dnsmasq is not running."
+      fi
+      ;;
+   reload|restart)
+      $0 stop
+      $0 start
+      ;;
+   *)
+      echo "Usage: $0 start|stop|restart|reload"
+      exit 1
+      ;;
+esac
+
+exit 0

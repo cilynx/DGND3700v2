@@ -1,0 +1,64 @@
+#!/bin/sh
+
+nvram_get() {
+   r=`nvram get $1 | cut -f2 -d=`
+   if [ "$r" = "$1 do not exist!" ]; then
+      return 0
+   else
+      echo "$r"
+   fi
+}
+
+rc_log() {
+   if [ -e /usr/etc/log_rc_flag ]; then
+      echo "`date` [rc_dropbear] $@" >> /var/log/rc_calls
+   fi
+}
+rc_log_echo() {
+   rc_log "$@"
+   echo "$@"
+}
+case "$1" in
+   start)
+      if [ "$(pidof dropbear)" ]; then
+	 rc_log_echo "dropbear already running ($(pidof dropbear)).  Leaving it alone."
+      else
+	 if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
+	    mkdir -p /etc/dropbear
+	    if [ "$(nvram_get dropbear_ecdsa_host_key)" ]; then
+	       nvram_get dropbear_ecdsa_host_key > /etc/dropbear/dropbear_ecdsa_host_key
+	    else
+	       dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key -s 256
+	       # This doesn't work -- need to get base64 encoding
+	       nvram set dropbear_ecdsa_host_key="`cat /etc/dropbear/dropbear_ecdsa_host_key`"
+	       nvram commit
+	    fi
+	 fi
+
+	 /usr/sbin/dropbear -p $(nvram_get lan_ipaddr):22
+
+	 if [ "$(pidof dropbear)" ]; then
+	    rc_log_echo "dropbear started ($(pidof dropbear)) successfully. (-p $(nvram_get lan_ipaddr):22)"
+	 else
+	    rc_log_echo "Error starting dropbear (-p $(nvram_get lan_ipaddr):22)"
+	 fi
+      fi
+      ;;
+   stop)
+      if [ "$(pidof dropbear)" ]; then
+	 /usr/sbin/kill -9 $(pidof dropbear)
+	 rc_log_echo "dropbear stopped."
+      else
+	 rc_log_echo "dropbear is not running."
+      fi
+      ;;
+   reload|restart)
+      $0 stop
+      $0 start
+      ;;
+   *)
+      echo "Usage: $0 start|stop|restart|reload"
+      exit 1
+      ;;
+esac
+exit 0
