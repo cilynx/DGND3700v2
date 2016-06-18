@@ -1,7 +1,7 @@
 #!/bin/sh
 
 nvram_get() {
-   r=`nvram get $1 | cut -f2 -d=`
+   r=`nvram get $1 | sed "s/$1=//"`
    if [ "$r" = "$1 do not exist!" ]; then
       return 0
    else
@@ -26,11 +26,10 @@ case "$1" in
 	 if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
 	    mkdir -p /etc/dropbear
 	    if [ "$(nvram_get dropbear_ecdsa_host_key)" ]; then
-	       nvram_get dropbear_ecdsa_host_key > /etc/dropbear/dropbear_ecdsa_host_key
+	       nvram_get dropbear_ecdsa_host_key | uudecode 
 	    else
 	       dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key -s 256
-	       # This doesn't work -- need to get base64 encoding
-	       nvram set dropbear_ecdsa_host_key="`cat /etc/dropbear/dropbear_ecdsa_host_key`"
+	       nvram set dropbear_ecdsa_host_key="`uuencode /etc/dropbear/dropbear_ecdsa_host_key /etc/dropbear/dropbear_ecdsa_host_key`"
 	       nvram commit
 	    fi
 	 fi

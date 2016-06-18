@@ -8,10 +8,6 @@ DNSMASQ_URL=http://www.thekelleys.org.uk/dnsmasq/$(DNSMASQ).tar.gz
 DROPBEAR=dropbear-2016.73
 DROPBEAR_URL=https://matt.ucc.asn.au/dropbear/releases/$(DROPBEAR).tar.bz2
 
-BUSYBOX=busybox-1.19.0
-BUSYBOX_OLD=busybox-1.13
-BUSYBOX_URL=https://www.busybox.net/downloads/$(BUSYBOX).tar.bz2
-
 BUILDROOT=buildroot-4.4.2-1
 
 HOST=mips-linux-uclibc
@@ -51,11 +47,10 @@ all: DGND3700v2.img
 	sed -i 's/\/usr\/lib/..\/..\/..\/target\/lib/' $(APPS)/ppp-2.4.1.pppoe4.orig/pppd/Makefile.linux
 	touch $@
 
-.busybox_extracted: .dgnd3700v2_extracted
-	wget -q -O - $(BUSYBOX_URL) | tar jxvC $(APPS)
-	cp $(APPS)/$(BUSYBOX_OLD)/.config $(APPS)/$(BUSYBOX)
-	make -C $(APPS)/$(BUSYBOX) defconfig
-	sed -i 's/$(BUSYBOX_OLD)/$(BUSYBOX)/' $(APPS)/Makefile
+.busybox_configured:
+	sed -i 's/# CONFIG_UUENCODE is not set/CONFIG_UUENCODE=y/' $(APPS)/busybox-1.13/.config
+	sed -i 's/# CONFIG_UUDECODE is not set/CONFIG_UUDECODE=y/' $(APPS)/busybox-1.13/.config
+	touch $@
 
 .dnsmasq_extracted: .dgnd3700v2_extracted
 	wget -q -O - $(DNSMASQ_URL) | tar zxvC $(APPS)
@@ -76,17 +71,22 @@ all: DGND3700v2.img
 	sed -i '80iGPL += $(DROPBEAR)' $(APPS)/Makefile
 	touch $@
 
-.dropbear_configured: .dropbear_extracted
+.dropbear_configured: .dropbear_extracted .dnsmasq_extracted
 	cd $(APPS)/$(DROPBEAR) && ./configure --host=$(HOST) --prefix=/ --disable-zlib CC=$(TOOLCHAIN)-cc LD=$(TOOLCHAIN)-ld 
-	sed -i '88iDESTDIR=../../target' $(APPS)/$(DROPBEAR)/Makefile
+	sed -i '88iDESTDIR=../../target' $(APPS)/$(DROPBEAR)/Makefile # Install into our target root
+	sed -i '13s/$$/ scp/' $(APPS)/$(DROPBEAR)/Makefile # Add 'scp' to the list of supported functions
+	sed -i '11iMULTI=1' $(APPS)/$(DROPBEAR)/Makefile # Build a single binary a-la busybox
+	sed -i '73s/$$/usr/' $(APPS)/$(DROPBEAR)/Makefile # Install to /usr/bin, not /bin
+	sed -i '130i\\techo "/sbin/rc_app/rc_dropbear start" >> ../../target/usr/etc/rcS' $(APPS)/$(DROPBEAR)/Makefile # Start dropbear on boot
+	sed -i "131i\\\\tsed -i 's/root:/root:\$$\$$1\$$\$$IfSMO0Dl\$$\$$kE\\\/1ViHfiDmyoKcNROhi9\\\//' ../../target/usr/etc/passwd" $(APPS)/$(DROPBEAR)/Makefile # Set the default password
+	sed -i '100i\\tcp ../../rc_dropbear $(RC_APP)/' $(APPS)/../Makefile # Install our rc_dropbear in rc_app/
 	touch $@
 
 .dgnd3700v2_kernel: .dgnd3700v2_extracted
 	sudo make -C $(DGND3700v2)_src_bak kernel
 	touch $@
 
-#.dgnd3700v2_source: .dgnd3700v2_kernel .dnsmasq_extracted .dropbear_configured .busybox_extracted
-.dgnd3700v2_source: .dgnd3700v2_kernel .dnsmasq_extracted 
+.dgnd3700v2_source: .dgnd3700v2_kernel .dnsmasq_extracted .dropbear_configured .busybox_configured
 	sudo make -C $(DGND3700v2)_src_bak source SHELL=/bin/bash
 	touch $@
 
