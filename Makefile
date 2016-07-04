@@ -50,6 +50,7 @@ all: DGND3700v2.img
 .busybox_configured:
 	sed -i 's/# CONFIG_UUENCODE is not set/CONFIG_UUENCODE=y/' $(APPS)/busybox-1.13/.config
 	sed -i 's/# CONFIG_UUDECODE is not set/CONFIG_UUDECODE=y/' $(APPS)/busybox-1.13/.config
+	sed -i 's/# CONFIG_CHPASSWD is not set/CONFIG_CHPASSWD=y/' $(APPS)/busybox-1.13/.config
 	touch $@
 
 .dnsmasq_extracted: .dgnd3700v2_extracted
@@ -78,7 +79,6 @@ all: DGND3700v2.img
 	sed -i '11iMULTI=1' $(APPS)/$(DROPBEAR)/Makefile # Build a single binary a-la busybox
 	sed -i '73s/$$/usr/' $(APPS)/$(DROPBEAR)/Makefile # Install to /usr/bin, not /bin
 	sed -i '130i\\techo "/sbin/rc_app/rc_dropbear start" >> ../../target/usr/etc/rcS' $(APPS)/$(DROPBEAR)/Makefile # Start dropbear on boot
-	sed -i "131i\\\\tsed -i 's/root:/root:\$$\$$1\$$\$$IfSMO0Dl\$$\$$kE\\\/1ViHfiDmyoKcNROhi9\\\//' ../../target/usr/etc/passwd" $(APPS)/$(DROPBEAR)/Makefile # Set the default password
 	sed -i '100i\\tcp ../../rc_dropbear $(RC_APP)/' $(APPS)/../Makefile # Install our rc_dropbear in rc_app/
 	touch $@
 

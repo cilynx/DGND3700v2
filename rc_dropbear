@@ -14,28 +14,43 @@ rc_log() {
       echo "`date` [rc_dropbear] $@" >> /var/log/rc_calls
    fi
 }
+
 rc_log_echo() {
    rc_log "$@"
    echo "$@"
 }
+
 case "$1" in
    start)
       if [ "$(pidof dropbear)" ]; then
 	 rc_log_echo "dropbear already running ($(pidof dropbear)).  Leaving it alone."
       else
+	 # Check if we're missing the host key in /etc/dropbear
 	 if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
 	    mkdir -p /etc/dropbear
+	    # Check if the host key is in NVRAM
 	    if [ "$(nvram_get dropbear_ecdsa_host_key)" ]; then
+	       # Populate /etc/dropbear/dropbear_ecdsa_host_key from NVRAM
 	       nvram_get dropbear_ecdsa_host_key | uudecode 
 	    else
+	       # Generate a new key and save it both to /etc/dropbear/ and NVRAM
 	       dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key -s 256
 	       nvram set dropbear_ecdsa_host_key="`uuencode /etc/dropbear/dropbear_ecdsa_host_key /etc/dropbear/dropbear_ecdsa_host_key`"
 	       nvram commit
 	    fi
 	 fi
 
-	 /usr/sbin/dropbear -p $(nvram_get lan_ipaddr):22
+	 # Set admin password from nvram
+	 if [ "$(nvram_get http_password)" ]; then
+	    echo root:$(nvram_get http_password) | chpasswd -m
+	 fi
 
+	 # Actually start the thing
+	 if [ "$(nvram_get lan_ipaddr)" ]; then
+	    /usr/sbin/dropbear -p $(nvram_get lan_ipaddr):22
+	 fi
+
+	 # Make sure it started
 	 if [ "$(pidof dropbear)" ]; then
 	    rc_log_echo "dropbear started ($(pidof dropbear)) successfully. (-p $(nvram_get lan_ipaddr):22)"
 	 else
@@ -60,4 +75,5 @@ case "$1" in
       exit 1
       ;;
 esac
+
 exit 0
